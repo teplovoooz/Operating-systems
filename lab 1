@@ -1,0 +1,96 @@
+#include <iostream>
+#include <thread>
+#include <mutex>
+#include <condition_variable>
+#include <chrono>
+#include <string>
+
+struct Event
+{
+    std::string text;
+
+    Event(int i)
+    {
+        text = "event " + std::to_string(i);
+    }
+};
+
+class Monitor
+{
+private:
+    std::mutex mutex;
+    std::condition_variable condition;
+    bool ready;
+    Event* data;
+
+public:
+    Monitor()
+    {
+        ready = false;
+        data = nullptr;
+    }
+
+    void provide(int i)
+    {
+        std::unique_lock<std::mutex> lock(mutex);
+
+        if (ready)
+        {
+            return;
+        }
+
+        data = new Event(i);
+        ready = true;
+        std::cout << "[producer] sent " << data->text << std::endl;
+        condition.notify_one();
+    }
+
+    void consume()
+    {
+        std::unique_lock<std::mutex> lock(mutex);
+
+        while (!ready)
+        {
+            condition.wait(lock);
+        }
+
+        Event* ev = data;
+        data = nullptr;
+        ready = false;
+        std::cout << "[consumer] processed " << ev->text << std::endl;
+        delete ev;
+    }
+};
+
+void producer(Monitor* mon)
+{
+    int i = 1;
+
+    while (true)
+    {
+        std::this_thread::sleep_for(std::chrono::seconds(1));
+        mon->provide(i);
+        i++;
+    }
+}
+
+void consumer(Monitor* mon)
+{
+    while (true)
+    {
+        mon->consume();
+    }
+}
+
+int main()
+{
+    Monitor mon;
+
+    std::thread t1(producer, &mon);
+    std::thread t2(consumer, &mon);
+
+    t1.join();
+    t2.join();
+
+    return 0;
+}
