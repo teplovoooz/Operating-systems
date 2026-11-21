@@ -103,7 +103,6 @@ int main()
     std::thread t2(consumer, &mon);
 
     t1.join();
-    t2.join();
 
     return 0;
 }
