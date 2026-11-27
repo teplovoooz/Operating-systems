@@ -41,6 +41,8 @@ if ! tmp=$(mktemp -d "$dir/.build.XXXXXXXX"); then
     exit 4
 fi
 
+trap 'rm -rf "$tmp"; exit 1' HUP INT QUIT PIPE TERM
+
 (
     cd "$tmp" || exit 1
     export TMPDIR="$tmp"
